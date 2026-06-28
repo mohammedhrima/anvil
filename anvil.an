@@ -1,3 +1,6 @@
-build:Cmd = "clang main.c"
+build:Cmd = "clang test.cpp"
+
+print build
+
 
 
