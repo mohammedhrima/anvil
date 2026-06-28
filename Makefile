@@ -1,7 +1,7 @@
 CXX      ?= clang++
 CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -Isrc
 
-SRCS     := src/anvil.cpp src/commands.cpp
+SRCS     := main.cpp
 
 UNAME_S  := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -17,7 +17,7 @@ else
 endif
 
 OUT_DIR  := build/$(OS)
-BIN      := $(OUT_DIR)/anvil
+BIN      := anvil
 PREFIX   ?= /usr/local
 
 .PHONY: all clean re install uninstall

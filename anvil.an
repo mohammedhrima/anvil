@@ -1,0 +1,25 @@
+# Cmd build = "clang main.c"
+
+# if anvil.os == "linux" {
+#     build:Cmd = "clang main.c"
+#     copy:Cmd = fn(arg: String) {
+#         file: File = open_file(arg).on({
+#             success = fn() {
+# 
+#             },
+#             failure = fn() {
+#                 print("failed to open ", arg, "\n")
+#                 exit(1)
+#             } 
+#         })
+# 
+#         content: String = file.readline()
+#         trim: String = content.trim()
+#     }
+# }
+# else {
+#     print("unknown os\n")
+# }
+
+
+a + b + c

@@ -1,0 +1,1 @@
+rm -rf a.out && clang++ main.cpp -std=c++23 -fsanitize=null && ./a.out anvil.an
