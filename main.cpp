@@ -9,12 +9,18 @@
 #include <vector>
 #include <optional>
 #include <functional>
+#include <filesystem>
+#include <cstdlib>
+#include <readline/readline.h>
+#include <unistd.h>
+#include <readline/history.h>
+#include <expected>
 
 enum class Type
 {
-    Ide, Num, Cmd, Str, File, Print, Dot, Dots, Lpar,
-    Rpar, Lbra, Rbra, Fdec, Fcall, If, Else, Elif,
-    While, Assign, Add, Sub, Mul, Div, Eof,
+    Ide, Num, Cmd, Str, File, Print, Dot, Dots, Coma, Lpar,
+    Rpar, Lcbra, Rcbra, Fdec, Fcall, If, Else, Elif, While, 
+    Assign, Add, Sub, Mul, Div, Loop, Exec, Bloc, Eof,
 };
 
 template <>
@@ -22,10 +28,10 @@ struct std::formatter<Type> : std::formatter<std::string_view>
 {
     auto format(Type type, format_context &ctx) const
     {
-        constexpr std::array<std::string_view, 24> type_names{
-            "Ide", "Num", "Cmd", "Str", "File", "Print", "Dot", "Dots", "Lpar",
-            "Rpar", "Lbra", "Rbra", "Fdec", "Fcall", "If", "Else",
-            "Elif", "While", "Assign", "Add", "Sub", "Mul", "Div", "Eof"
+        constexpr std::array<std::string_view, static_cast<int>(Type::Eof) + 1> type_names{
+            "Ide", "Num", "Cmd", "Str", "File", "Print", "Dot", "Dots", "Coma", "Lpar",
+            "Rpar", "Lcbra", "Rcbra", "Fdec", "Fcall", "If", "Else", "Elif", "While", 
+            "Assign", "Add", "Sub", "Mul", "Div", "Loop", "Exec", "Bloc", "Eof"
         };
         return std::format_to(ctx.out(), "{}", type_names.at(std::to_underlying(type)));
     };
@@ -84,7 +90,7 @@ Token Token::identifier(std::string v)
     static const std::unordered_map<std::string_view, Type> keywords{
         {"Cmd", Type::Cmd}, {"fn", Type::Fdec}, {"File", Type::File},
         {"if", Type::If}, {"else", Type::Else}, {"elif", Type::Elif},
-        {"while", Type::While}, {"print", Type::Print},
+        {"while", Type::While}, {"loop", Type::Loop},
     };
     if (auto it = keywords.find(v); it != keywords.end())
         return Token{it->second, std::move(v)};
@@ -95,9 +101,9 @@ Token Token::symbol(std::string v)
 {
     static const std::unordered_map<std::string_view, Type> keywords{
         {"=", Type::Assign}, {"(", Type::Lpar}, {")", Type::Rpar},
-        {"{", Type::Lbra}, {"}", Type::Rbra}, {"+", Type::Add},
+        {"{", Type::Lcbra}, {"}", Type::Rcbra}, {"+", Type::Add},
         {"-", Type::Sub}, {"*", Type::Mul}, {"/", Type::Div},
-        {":", Type::Dots},
+        {":", Type::Dots}, {".", Type::Dot}, {",", Type::Coma},
     };
     if (auto it = keywords.find(v); it != keywords.end())
         return Token{it->second, std::move(v)};
@@ -111,6 +117,7 @@ Token Token::eof()
 
 std::vector<Token> tokens;
 int pos = 0;
+
 void tokenize(const std::filesystem::path &path)
 {
     std::filesystem::path filepath{path};
@@ -153,7 +160,7 @@ void tokenize(const std::filesystem::path &path)
             i++;
             continue;
         }
-        if (std::string_view("=(){}+-/*:").contains(content[i]))
+        if (std::string_view("=(){}+-/*:.,").contains(content[i]))
         {
             tokens.emplace_back(Token::symbol(content.substr(i, 1)));
             i++;
@@ -178,10 +185,13 @@ class Node
 public:
     Token token;
     std::unique_ptr<Node> left, right;
+    std::vector<std::unique_ptr<Node>> children;
+    std::unordered_map<std::string, std::unique_ptr<Node>> on;
 
     Node() = default;
     Node(Token);
     void print(int);
+    void add_child(std::unique_ptr<Node>);
 };
 
 template<>
@@ -200,37 +210,56 @@ void Node::print(int space)
     std::println("{:{}}{}", "", space, *this);
     if(left != nullptr) left->print(space + 6);
     if(right != nullptr) right->print(space + 6);
+    if(!children.empty()) std::println("{:{}}children:", "", space + 3);
+    for(auto &e : children) e->print(space + 6);
+}
+
+void Node::add_child(std::unique_ptr<Node> child)
+{
+    children.push_back(std::move(child));
 }
 
 std::unique_ptr<Node> expr_node(int min_op);
 Token next() { return tokens[pos++]; }
-static constexpr int MAX_OP = 50;
+Token expect(Type type)
+{
+    if(tokens[pos].type != type)
+        throw std::runtime_error("unexpected type");
+    return next();
+}
+static constexpr int MAX_OP = 100;
 
 std::unique_ptr<Node> prime_node()
 {
     Token token = next();
     switch (token.type)
     {
-    case Type::Num: case Type::Str:
+    case Type::Num: case Type::Str: case Type::Loop:
         return std::make_unique<Node>(std::move(token));
-    case Type::Print:
-    {
-        std::unique_ptr<Node> node = std::make_unique<Node>(std::move(token));
-        node->left = std::make_unique<Node>(std::move(next()));
-        return node;
-    }
     case Type::Ide: {
-        if(tokens[pos].type == Type::Dots)
+        std::unique_ptr<Node> node = std::make_unique<Node>(std::move(token));
+        if (tokens[pos].type == Type::Dots)
         {
             next(); // skip Dots
             switch(tokens[pos].type)
             {
                 case Type::Cmd: break;
-                default:  std::runtime_error("unlviaid data type ");
+                default:  std::runtime_error("invalid data type ");
             }
-            token.type = next().type; // skip data type
+            node->token.type = next().type; // skip data type
         }
-        return std::make_unique<Node>(std::move(token));
+        else if (tokens[pos].type == Type::Lpar)
+        {
+            next(); // skip Dots
+            do {
+                if (tokens[pos].type == Type::Rpar) break;
+                node->add_child(expr_node(MAX_OP));
+                while(tokens[pos].type == Type::Coma) next();
+            } while(true);
+            expect(Type::Rpar);
+            node->token.type = Type::Fcall;
+        }
+        return node;
     }
     case Type::Add: case Type::Sub: case Type::Mul: case Type::Div: case Type::Assign:
     {
@@ -238,6 +267,26 @@ std::unique_ptr<Node> prime_node()
         node->left = expr_node(MAX_OP);
         return node;
     }
+    case Type::Lpar:
+    {
+        // next();
+        std::unique_ptr<Node> node =expr_node(0);
+        expect(Type::Rpar);
+        return node;
+    }
+    case Type::Lcbra:
+    {
+        // next();
+        token.type = Type::Bloc;
+        std::unique_ptr<Node> node = std::make_unique<Node>(std::move(token));
+        do {
+            if (tokens[pos].type == Type::Rcbra) break;
+            node->add_child(expr_node(0));
+            while(tokens[pos].type == Type::Coma) next();
+        } while(true);
+        expect(Type::Rcbra);
+        return node;
+    } 
     default:
         throw std::runtime_error("expected expression <" + token.value + ">");
     }
@@ -257,6 +306,7 @@ std::unique_ptr<Node> expr_node(int min_op)
             case Type::Sub:     op = 20; break;
             case Type::Mul:     op = 30; break;
             case Type::Div:     op = 30; break;
+            case Type::Dot:     op = 40; break;
             default: break;
         };
         if(op <= min_op) break;
@@ -270,6 +320,39 @@ std::unique_ptr<Node> expr_node(int min_op)
 }
 
 std::unordered_map<std::string, std::unique_ptr<Node>> cmds;
+
+static std::string get_prompt()
+{
+    const char *user = getenv("USER");
+    std::string username = user ? user : "unknown";
+    char host[256];
+    std::string hostname = "unkown";
+    if (gethostname(host, sizeof(host)) == 0) {
+        hostname = host;
+    }
+    std::string dir = std::filesystem::current_path().filename().string();
+    std::string prompt = std::format("(anvil) {}@{} {} > ", username, hostname, dir);
+    return prompt;
+}
+
+std::expected<std::string, std::string> execute_command(const std::string& command) {
+    char buffer[128];
+    std::string result;
+
+    auto pipe = popen(command.c_str(), "r");
+
+    if (!pipe) 
+        return std::unexpected("Failed to start command process.");
+
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        result += buffer;
+    }
+    int return_code = pclose(pipe);
+    if (return_code != 0) {
+        return std::unexpected("Command failed during execution.");
+    }
+    return result;
+}
 
 std::unique_ptr<Node> evaluate(const std::unique_ptr<Node> &node)
 {
@@ -301,10 +384,49 @@ std::unique_ptr<Node> evaluate(const std::unique_ptr<Node> &node)
             slot->token.value = right->token.value;            
             return std::make_unique<Node>(slot->token);
         }
-        case Type::Print:
+        case Type::Fcall:
         {
-            std::unique_ptr<Node> left = evaluate(node->left);
-            std::println("execute {}", left->token.value);
+            if(node->token.name == "print")
+            {
+                std::unique_ptr<Node> left = evaluate(node->left);
+                std::println("command {}", left->token.value);
+                return std::make_unique<Node>(node->token);
+            };
+            throw std::runtime_error("unknown fcall");
+        }
+        case Type::Loop:
+        {
+            std::string prompt = get_prompt();      
+            while(1)
+            {
+                char *line = readline(prompt.data());
+                if(!line) break;
+                if(*line) add_history(line);
+            
+                std::string cmd(line);
+                free(line);
+
+                cmd.erase(cmd.begin(), std::find_if(cmd.begin(), cmd.end(), [](unsigned char ch){
+                    return !std::isspace(ch);
+                }));
+
+                cmd.erase(std::find_if(cmd.rbegin(), cmd.rend(), [](unsigned char ch){
+                    return !std::isspace(ch);
+                }).base(), cmd.end());
+
+                if(cmds.contains(cmd))
+                {
+                    cmd = cmds[cmd]->token.value;
+                }
+                // else
+                {
+                    auto output = execute_command(cmd);
+                    if (output) {
+                        std::print("{}", *output);
+                    }
+                    std::fflush(nullptr); 
+                }
+            }
             return std::make_unique<Node>(node->token);
         }
         default:
@@ -327,8 +449,8 @@ int main(int argc, char **argv)
         for(auto &e: nodes)
             e->print(0);
         
-        for(auto &e: nodes)
-            evaluate(e);
+        // for(auto &e: nodes)
+        //     evaluate(e);
         // 1 + 2 * 3 + 3 + 4
         // std::function<int(const std::unique_ptr<Node>&)> evaluate = [&](const std::unique_ptr<Node> &node){
         //     switch(node->token.type){

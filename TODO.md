@@ -1,4 +1,6 @@
 
++ mention installing readline
+
 
 src = "/folder1"
 dist = "/folder2"
@@ -10,10 +12,10 @@ if anvil.os == "linux" {
     build:Cmd = "clang main.c"
     copy:Cmd = fn(arg: String) {
         file: File = open_file(arg).on({
-            success = fn() {
+            success = {
 
             },
-            failure = fn() {
+            failure = {
                 print("failed to open ", arg, "\n")
                 exit(1)
             } 

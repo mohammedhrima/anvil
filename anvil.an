@@ -1,6 +1,20 @@
-build:Cmd = "clang test.cpp"
+build:Cmd = "ls"
 
-print build
+# obj = { abc = {"ee"} }
 
+# print("abccc")
 
+build.on(
+    failure = {
+        print("command failed")
+    },
+    success = {
+        print("command success")
+    }
+)
+
+build
+
+# print build
+#loop
 
