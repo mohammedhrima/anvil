@@ -1,0 +1,8 @@
+{
+  "clangd.arguments": [
+    "--query-driver=/opt/homebrew/opt/llvm/bin/clang++",
+    "--header-insertion=never"
+  ],
+  "C_Cpp.default.cppStandard": "c++23",
+  "C_Cpp.default.compilerPath": "/opt/homebrew/opt/llvm/bin/clang++"
+}

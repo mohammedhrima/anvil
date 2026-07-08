@@ -1,20 +1,25 @@
-build:Cmd = "ls"
+# A tiny anvil example. Build the interpreter with `make`, then run: anvil anvil.an
+# At the prompt, type a command name (e.g. `hi`), or `reload`, or Ctrl-D to quit.
 
-# obj = { abc = {"ee"} }
+setThreadPool(4)
 
-# print("abccc")
+names = ["world", "anvil"]
 
-build.on(
-    failure = {
-        print("command failed")
-    },
-    success = {
-        print("command success")
+fn greet(who) {
+    Cmd(["echo hello " + who]).on(
+        success = { okput("greeted " + who) },
+        failure = { errput("could not greet " + who) }
+    )
+}
+
+fn hi() {
+    for name in names {
+        greet(name)
     }
-)
+    res = Cmd(["echo captured text"]).on()
+    output("flag=" + res.flag + " code=" + res.code + " out=" + res.out)
+}
 
-build
+hi()
 
-# print build
-#loop
-
+loop
