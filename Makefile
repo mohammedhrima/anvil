@@ -2,7 +2,7 @@ CXX      ?= clang++
 CXXFLAGS := -std=c++23 -O2 -Wall -Wextra -Wimplicit-fallthrough
 LDLIBS   := -lreadline
 
-SRCS     := src/anvil.cpp
+SRCS     := $(wildcard src/*.cpp)
 
 UNAME_S  := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -25,13 +25,36 @@ BIN      := $(OUT_DIR)/anvil
 PREFIX   ?= /usr/local
 BINDIR   ?= $(HOME)/.local/bin
 
-.PHONY: all clean re install uninstall link unlink
+ASAN_BIN := $(OUT_DIR)/anvil-asan
+
+ifeq ($(OS),mac)
+    ASAN_CXX     ?= /usr/bin/clang++
+    ASAN_LDFLAGS := -L/opt/homebrew/opt/readline/lib
+else
+    ASAN_CXX     ?= $(CXX)
+    ASAN_LDFLAGS := $(LDFLAGS)
+endif
+
+.PHONY: all clean re install uninstall link unlink asan test test-update
 
 all: $(BIN) link
 
 $(BIN): $(SRCS)
 	@mkdir -p $(OUT_DIR)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(SRCS) $(LDLIBS) -o $@
+
+asan: $(ASAN_BIN)
+
+$(ASAN_BIN): $(SRCS)
+	@mkdir -p $(OUT_DIR)
+	$(ASAN_CXX) $(CXXFLAGS) -g -O1 -fno-omit-frame-pointer -fsanitize=address,undefined \
+		$(ASAN_LDFLAGS) $(SRCS) $(LDLIBS) -o $@
+
+test: $(BIN)
+	@tests/run.sh
+
+test-update: $(BIN)
+	@UPDATE=1 tests/run.sh
 
 link: $(BIN)
 	@mkdir -p $(BINDIR)

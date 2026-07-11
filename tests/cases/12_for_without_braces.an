@@ -1,0 +1,4 @@
+# Same root cause as 05: an unbraced loop body used to run its own arguments.
+names = ["a", "b"]
+for n in names output("saw " + n)
+output("after")

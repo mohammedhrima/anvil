@@ -1,0 +1,2 @@
+left side of '=' must be a name
+__EXIT__=1

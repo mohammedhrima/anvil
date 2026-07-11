@@ -1,0 +1,2 @@
+res = Cmd(["echo captured text"]).on()
+output("flag=" + res.flag + " code=" + res.code + " out=" + res.out)

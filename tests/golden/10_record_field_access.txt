@@ -1,0 +1,3 @@
+flag=success code=0 out=captured text
+
+__EXIT__=0

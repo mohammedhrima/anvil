@@ -1,0 +1,4 @@
+saw a
+saw b
+after
+__EXIT__=0

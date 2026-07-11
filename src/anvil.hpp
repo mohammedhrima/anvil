@@ -154,3 +154,29 @@ public:
         return fut;
     }
 };
+
+// anvil.cpp
+extern std::vector<Token> tokens;
+extern int pos;
+extern std::filesystem::path source_file;
+extern bool DEBUG;
+extern std::unordered_map<std::string, std::unique_ptr<Node>> cmds;
+extern std::unordered_map<std::string, std::unique_ptr<Node>> funcs;
+extern bool is_reloaded;
+
+// lexer.cpp
+void tokenize(const std::filesystem::path &path);
+
+// parser.cpp
+std::vector<std::unique_ptr<Node>> parse_source();
+
+// exec.cpp
+extern unsigned pool_size;
+extern std::unique_ptr<ThreadPool> pool;
+std::string get_prompt();
+std::expected<std::string, std::string> execute_command(const std::string &command);
+std::unique_ptr<Node> run_command(Node *cmd);
+
+// interp.cpp
+std::unique_ptr<Node> evaluate(const std::unique_ptr<Node> &node);
+void run_statement(const std::unique_ptr<Node> &node);

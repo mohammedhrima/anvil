@@ -1,0 +1,5 @@
+res = Cmd(["kill -9 $$"]).on(
+    success = { okput("reported SUCCESS") },
+    failure = { errput("reported failure") }
+)
+output("code=" + res.code)

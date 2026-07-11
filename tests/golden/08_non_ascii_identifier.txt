@@ -1,0 +1,2 @@
+unkonwn character <Ã>
+__EXIT__=1
