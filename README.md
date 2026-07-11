@@ -36,8 +36,12 @@ On macOS the Makefile expects Homebrew's readline under `/opt/homebrew`.
 Source layout:
 
 ```
-src/anvil.hpp   # types: Type, Token, Node, ThreadPool (+ formatters)
-src/anvil.cpp   # lexer, parser, evaluator, builtins, main
+src/anvil.hpp   # shared types (Type, Token, Node, ThreadPool) + cross-file declarations
+src/lexer.cpp   # tokenizer
+src/parser.cpp  # AST nodes + the parser
+src/exec.cpp    # running shell commands, capturing their output
+src/interp.cpp  # the evaluator + builtins
+src/anvil.cpp   # globals + main
 Makefile
 anvil.an        # a small example
 ```
@@ -117,7 +121,7 @@ errput("something broke")
 - An array of **strings** is space-joined into **one** shell command:
   `Cmd(["ls", "-l"])` runs `ls -l`.
 - **Several** array arguments become **several** commands that run
-  **concurrently** on a thread pool: `Cmd(["make a"], ["make b"])`.
+  **concurrently**: `Cmd(["make a"], ["make b"])`.
 - Commands run through `/bin/sh`, so pipes, `$(...)`, redirects and `&&` work
   inside the string.
 

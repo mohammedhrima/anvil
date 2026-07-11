@@ -1,0 +1,5 @@
+(anvil) PROMPT> f 1 2
+wrong number of arguments to f
+(anvil) PROMPT> echo SENTINEL-still-alive
+SENTINEL-still-alive
+(anvil) PROMPT> __EXIT__=0

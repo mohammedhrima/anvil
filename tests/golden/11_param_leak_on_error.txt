@@ -1,0 +1,5 @@
+(anvil) PROMPT> f hello
+unknown fcall
+(anvil) PROMPT> peek
+command not found who
+(anvil) PROMPT> __EXIT__=0

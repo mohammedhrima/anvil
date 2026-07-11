@@ -1,0 +1,5 @@
+greeted world
+greeted anvil
+flag=success code=0 out=captured text
+
+(anvil) PROMPT> __EXIT__=0

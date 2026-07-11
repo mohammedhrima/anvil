@@ -1,0 +1,2 @@
+echo out-text; exit 1
+echo SENTINEL-reached
